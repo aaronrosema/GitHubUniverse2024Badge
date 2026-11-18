@@ -1,0 +1,9 @@
+https://gh.io/badger
+Badger 2350
+* RP2350A, 150MHz, 520KB RAM
+* 296x128 1-bit e-ink
+* five user buttons
+* user LED
+
+Scan this code to learn
+more about GitHub Badger 2350.

@@ -50,18 +50,21 @@ def truncatestring(text, text_size, width):
 
 # Draw the badge, including user text
 def draw_badge():
-    display.set_pen(15)
+    bg_pen = 0 if inverted else 15
+    fg_pen = 15 if inverted else 0
+    display.set_pen(bg_pen)
     display.clear()
     
-    # Draw the background
-    try:
-        jpeg.open_file(BADGE_BACKGROUND)
-        jpeg.decode(0, 0)
-    except OSError:
-        print("Badge background error")
+    # Skip loading the background image in inverted mode to preserve crisp black/white contrast
+    if not inverted:
+        try:
+            jpeg.open_file(BADGE_BACKGROUND)
+            jpeg.decode(0, 0)
+        except OSError:
+            print("Badge background error")
 
     # Draw the firstname, scaling it based on the available width
-    display.set_pen(0)
+    display.set_pen(fg_pen)
     display.set_font("bitmap8")
     display.set_thickness(4)
     name_size = 4  # A sensible starting scale
@@ -74,7 +77,7 @@ def draw_badge():
             break
 
     # Draw the lastname, scaling it based on the available width
-    display.set_pen(0)
+    display.set_pen(fg_pen)
     display.set_font("bitmap8")
     display.set_thickness(4)
     lastname_size = 3  # A sensible starting scale
@@ -87,7 +90,7 @@ def draw_badge():
             break
 
     # Draw the title and pronouns, aligned to the bottom & truncated to fit on one line
-    display.set_pen(0)
+    display.set_pen(fg_pen)
     display.set_font("bitmap8")
     
     # Title
@@ -160,6 +163,7 @@ finally:
 #       Main program
 # ------------------------------
 
+inverted = False
 draw_badge()
 
 while True:
@@ -167,6 +171,30 @@ while True:
     # powered *through* HALT, so latch the power back on.
     display.keepalive()
 
+    # Toggle inverted colors when Button A is pressed
+    if display.pressed(badger2040.BUTTON_A):
+        inverted = not inverted
+        draw_badge()
+
+    # Launch dashboard.py when Button B is pressed
+    if display.pressed(badger2040.BUTTON_B):
+        try:
+            with open("/dashboard.py") as f:
+                code = f.read()
+            exec(code, {"__name__": "__main__"})
+        except Exception as e:
+            import sys
+            with open("/error.txt", "w") as err_file:
+                sys.print_exception(e, err_file)
+            
+            # Also draw the short error message right on the screen
+            display.set_pen(15)
+            display.clear()
+            display.set_pen(0)
+            display.set_font("bitmap8")
+            display.text("Dashboard Error:", 10, 10, 276, 2)
+            display.text(str(e), 10, 35, 276, 2)
+            display.update()
+
     # If on battery, halt the Badger to save power, it will wake up if any of the front buttons are pressed
     display.halt()
-
