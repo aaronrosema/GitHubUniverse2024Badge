@@ -1,16 +1,6 @@
 import json
 import time
 import urllib.request
-import psutil
-import serial
-
-PORT = "/dev/cu.usbmodem1101"
-BAUD = 115200
-GH_STATUS_URL = "https://githubstatus.com"
-
-import json
-import time
-import urllib.request
 import urllib.error
 import psutil
 import serial
@@ -18,6 +8,40 @@ import serial
 PORT = "/dev/cu.usbmodem1101"
 BAUD = 115200
 GH_STATUS_URL = "https://githubstatus.com"
+
+# Coordinates for weather (currently set to Detroit/SE Michigan)
+LAT = 43.1230
+LON = -86.1553
+WEATHER_URL = (
+    f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}"
+    "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m"
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph"
+)
+
+WMO_CODES = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Foggy",
+    48: "Rime fog",
+    51: "Light drizzle",
+    53: "Drizzle",
+    55: "Dense drizzle",
+    61: "Light rain",
+    63: "Rain",
+    65: "Heavy rain",
+    71: "Light snow",
+    73: "Snow",
+    75: "Heavy snow",
+    77: "Snow grains",
+    80: "Rain showers",
+    81: "Mod. showers",
+    82: "Heavy showers",
+    85: "Snow showers",
+    86: "Heavy snow shw",
+    95: "Thunderstorm",
+}
 
 def get_github_status():
     try:
@@ -45,31 +69,35 @@ def get_github_status():
             return ["All systems good!", "All GitHub services", "operational"]
         return impacted[:3]
 
-    except urllib.error.HTTPError as e:
-        print(f"HTTP Error {e.code}: {e.reason}")
-        return ["Status HTTP Error", f"Code: {e.code}", "Retrying soon..."]
     except Exception as e:
-        print(f"GitHub status error: {e}")
         return ["Status check error", str(e)[:28], "Retrying soon..."]
+
+def get_weather():
+    try:
+        req = urllib.request.Request(
+            WEATHER_URL,
+            headers={"User-Agent": "Badger2040-Dashboard"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        cur = data.get("current", {})
+        temp = round(cur.get("temperature_2m", 0))
+        feels = round(cur.get("apparent_temperature", 0))
+        wind = round(cur.get("wind_speed_10m", 0))
+        code = cur.get("weather_code", 0)
+        cond = WMO_CODES.get(code, f"Code {code}")
+
+        return [
+            f"Temp: {temp}F (Feels {feels}F)",
+            f"Cond: {cond}",
+            f"Wind: {wind} mph",
+        ]
+    except Exception as e:
+        return ["Weather error", str(e)[:28], "Retrying soon..."]
 
 ser = serial.Serial(PORT, BAUD, timeout=1)
 time.sleep(2)
-
-while True:
-    cpu = psutil.cpu_percent(interval=1)
-    ram = psutil.virtual_memory().percent
-    now = time.strftime("%I:%M %p")
-    page1 = f"Time: {now}|CPU Load: {cpu}%|RAM Used: {ram}%"
-
-    gh_lines = get_github_status()
-    page2 = "|".join(gh_lines)
-
-    payload = f"{page1}||{page2}\n"
-    ser.write(payload.encode("utf-8"))
-    print("Sent:", payload.strip())
-
-    time.sleep(30)
-
 
 while True:
     # Page 1: Mac System Stats
@@ -79,11 +107,13 @@ while True:
     page1 = f"Time: {now}|CPU Load: {cpu}%|RAM Used: {ram}%"
 
     # Page 2: GitHub Status
-    gh_lines = get_github_status()
-    page2 = "|".join(gh_lines)
+    page2 = "|".join(get_github_status())
 
-    # Send both pages separated by '||'
-    payload = f"{page1}||{page2}\n"
+    # Page 3: Local Weather
+    page3 = "|".join(get_weather())
+
+    payload = f"{page1}||{page2}||{page3}\n"
     ser.write(payload.encode("utf-8"))
+    print("Sent:", payload.strip())
 
     time.sleep(30)
