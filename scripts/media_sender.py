@@ -11,18 +11,19 @@ SERIAL_TIMEOUT = 0.2
 OSASCRIPT_TIMEOUT = 5
 
 STATUS_SCRIPT = '''
+set output_volume to output volume of (get volume settings)
 if application "Music" is running then
     tell application "Music"
         if player state is stopped then
-            return "Nothing playing" & tab & "" & tab & "stopped"
+            return "Nothing playing" & tab & "" & tab & "stopped" & tab & (output_volume as text)
         end if
         set track_name to name of current track
         set track_artist to artist of current track
         set playback_state to player state as text
-        return track_name & tab & track_artist & tab & playback_state
+        return track_name & tab & track_artist & tab & playback_state & tab & (output_volume as text)
     end tell
 else
-    return "Music is not running" & tab & "" & tab & "stopped"
+    return "Music is not running" & tab & "" & tab & "stopped" & tab & (output_volume as text)
 end if
 '''
 
@@ -48,7 +49,7 @@ set volume output volume targetVolume
 def run_osascript(script):
     try:
         result = subprocess.run(
-            ["osascript", "-e", script],
+            ["/usr/bin/osascript", "-e", script],
             capture_output=True,
             text=True,
             timeout=OSASCRIPT_TIMEOUT,
@@ -66,20 +67,27 @@ def clean_field(value):
 
 
 def get_music_status():
-    fields = run_osascript(STATUS_SCRIPT).split("\t", 2)
-    if len(fields) != 3:
+    fields = run_osascript(STATUS_SCRIPT).split("\t", 3)
+    if len(fields) != 4:
         raise RuntimeError("Unexpected Apple Music status response")
-    return tuple(clean_field(field) for field in fields)
+    try:
+        volume = int(fields[3])
+    except ValueError as error:
+        raise RuntimeError("Unexpected output volume in Apple Music status") from error
+    if not 0 <= volume <= 100:
+        raise RuntimeError("Output volume is outside the expected range")
+    track, artist, state = (clean_field(field) for field in fields[:3])
+    return track, artist, state, volume
 
 
 def send_status(connection):
     try:
-        track, artist, state = get_music_status()
+        track, artist, state, volume = get_music_status()
     except RuntimeError as error:
         print(f"Apple Music status unavailable: {error}")
-        track, artist, state = "Apple Music unavailable", "", "Check Mac"
+        track, artist, state, volume = "Apple Music unavailable", "", "Check Mac", -1
 
-    message = "MEDIA|{}|{}|{}\n".format(track, artist, state)
+    message = "MEDIA|{}|{}|{}|{}\n".format(track, artist, state, volume)
     connection.write(message.encode("utf-8"))
 
 

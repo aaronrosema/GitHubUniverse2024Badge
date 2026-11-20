@@ -128,23 +128,27 @@ def send_payload(connection, payload):
             connection = connect_serial()
 
 
-ser = connect_serial()
+def main():
+    ser = connect_serial()
+    while True:
+        # Page 1: Mac System Stats
+        cpu = psutil.cpu_percent(interval=1)
+        ram = psutil.virtual_memory().percent
+        now = time.strftime("%I:%M %p")
+        page1 = f"Time: {now}|CPU Load: {cpu}%|RAM Used: {ram}%"
 
-while True:
-    # Page 1: Mac System Stats
-    cpu = psutil.cpu_percent(interval=1)
-    ram = psutil.virtual_memory().percent
-    now = time.strftime("%I:%M %p")
-    page1 = f"Time: {now}|CPU Load: {cpu}%|RAM Used: {ram}%"
+        # Page 2: GitHub Status
+        page2 = "|".join(get_github_status())
 
-    # Page 2: GitHub Status
-    page2 = "|".join(get_github_status())
+        # Page 3: Local Weather
+        page3 = "|".join(get_weather())
 
-    # Page 3: Local Weather
-    page3 = "|".join(get_weather())
+        payload = f"{page1}||{page2}||{page3}\n"
+        ser = send_payload(ser, payload)
+        print("Sent:", payload.strip())
 
-    payload = f"{page1}||{page2}||{page3}\n"
-    ser = send_payload(ser, payload)
-    print("Sent:", payload.strip())
+        time.sleep(30)
 
-    time.sleep(30)
+
+if __name__ == "__main__":
+    main()

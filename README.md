@@ -6,6 +6,27 @@ On top of the stock Badger OS image, the following changes are made:
 - A GitHub event branded [badge.py](preload/examples/badge.py) that displays the attendee name with a background image and corresponding badge.txt file containing the personalised data
 - Separate launcher apps for Mac system stats, GitHub Status, weather, and Apple Music, populated by [pc_sender.py](pc_sender.py) and [media_sender.py](scripts/media_sender.py). Run `python3 pc_sender.py` for the dashboards or `python3 scripts/media_sender.py` for Apple Music, then select the matching app from the launcher. The media sender reconnects if the badge resets, displays the current track, maps A/B/C to previous/play-pause/next, and maps Up/Down to volume. Press A+C to return to the launcher; A alone inverts the dashboard colors.
 
+### Automatic badge sender (macOS)
+
+Install the user LaunchAgent once from the repository root:
+```
+python3 scripts/install_launch_agent.py
+```
+
+The background service starts at login, waits for the badge's USB serial connection, and handles both dashboard updates and Apple Music controls through one connection. It reconnects when the badge is unplugged or reset, so no Terminal window needs to stay open. Do not run `pc_sender.py` or `media_sender.py` separately while this service is active. Logs are written to `~/Library/Logs/BadgerBodger/sender.log`.
+
+To sync the device while the service is active, run:
+```
+python3 scripts/sync_badge.py
+```
+
+This pauses the sender, runs a one-shot deployment, and restarts the sender after `Sync complete; device reset.` The watcher can also be run directly with `python3 scripts/watch_badger.py --once` when the sender service is stopped.
+
+To stop and remove the service:
+```
+python3 scripts/install_launch_agent.py uninstall
+```
+
 ## Running on a laptop
 Install the latest version of python 3 via homebrew
 ```

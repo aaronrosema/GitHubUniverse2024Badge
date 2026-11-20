@@ -17,6 +17,7 @@ poll.register(sys.stdin, select.POLLIN)
 track = "Waiting for Apple Music"
 artist = ""
 playback_state = ""
+volume = -1
 previous_a = False
 previous_b = False
 previous_c = False
@@ -34,6 +35,16 @@ def fit_line(value, limit=23):
     return value
 
 
+def fit_to_width(value, max_width, text_size):
+    if display.measure_text(value, text_size) <= max_width:
+        return value
+
+    truncated = value
+    while truncated and display.measure_text(truncated + "~", text_size) > max_width:
+        truncated = truncated[:-1]
+    return truncated + "~"
+
+
 def draw():
     display.set_pen(15)
     display.clear()
@@ -43,24 +54,62 @@ def draw():
     display.text("APPLE MUSIC", 8, 4, scale=2)
 
     display.set_pen(0)
-    display.text(fit_line(track), 10, 34, 276, scale=2)
-    display.text(fit_line(artist, 40), 10, 62, 276, scale=1)
-    display.text(fit_line(playback_state), 10, 81, 276, scale=2)
-    display.text("A: BACK   B: PLAY/PAUSE   C: NEXT", 8, 101, 280, scale=1)
+    display.text(fit_line(track), 10, 34, 250, scale=2)
+    display.text(fit_to_width(artist, 250, 1.5), 10, 62, 250, scale=1.5)
+    display.text(fit_line(playback_state), 10, 81, 250, scale=2)
+    display.text("VOL", 274, 30, 20, scale=1)
+    display.rectangle(276, 40, 14, 48)
+    display.set_pen(15)
+    display.rectangle(278, 42, 10, 44)
+    if volume >= 0:
+        fill_height = int(44 * volume / 100)
+        if fill_height:
+            display.set_pen(0)
+            display.rectangle(280, 86 - fill_height, 6, fill_height)
+    display.set_pen(0)
+    volume_label = "--%" if volume < 0 else str(volume) + "%"
+    volume_label_width = display.measure_text(volume_label, 1)
+    display.text(
+        volume_label,
+        int(283 - volume_label_width / 2),
+        91,
+        30,
+        scale=1,
+    )
+    for center, label in (
+        (41, "A: BACK"),
+        (147, "B: PLAY/PAUSE"),
+        (253, "C: NEXT"),
+    ):
+        label_width = display.measure_text(label, 1)
+        display.text(
+            label,
+            int(center - label_width / 2),
+            116,
+            98,
+            scale=1,
+        )
     display.update()
 
 
 def update_from_host(message):
-    global track, artist, playback_state
-    fields = message.split("|", 3)
-    if len(fields) == 4 and fields[0] == "MEDIA":
+    global track, artist, playback_state, volume
+    fields = message.split("|", 4)
+    if len(fields) == 5 and fields[0] == "MEDIA":
+        try:
+            updated_volume = int(fields[4])
+        except ValueError:
+            updated_volume = -1
+        if updated_volume < -1 or updated_volume > 100:
+            updated_volume = -1
         updated_status = (
             fields[1] or "Unknown track",
             fields[2],
             fields[3],
+            updated_volume,
         )
-        if updated_status != (track, artist, playback_state):
-            track, artist, playback_state = updated_status
+        if updated_status != (track, artist, playback_state, volume):
+            track, artist, playback_state, volume = updated_status
             draw()
 
 

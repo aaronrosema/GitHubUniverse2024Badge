@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 import subprocess
 import sys
@@ -100,7 +101,7 @@ def _deploy(port, files, removed=()):
     _run_mpremote(port, "reset")
 
 
-def watch():
+def watch(once=False):
     print(f"Watching {PRELOAD.relative_to(ROOT)} for a connected Badger. Press Ctrl-C to stop.")
     synced_by_port = {}
     active_port = None
@@ -128,6 +129,9 @@ def watch():
             synced = synced_by_port[port]
             changed = [name for name, state in snapshot.items() if synced.get(name) != state]
             removed = [name for name in synced if name not in snapshot]
+            if once and not changed and not removed:
+                print("No files to sync.")
+                return
             now = time.monotonic()
             if (changed or removed) and now >= retry_after:
                 try:
@@ -140,6 +144,8 @@ def watch():
                     synced.update({name: snapshot[name] for name in changed})
                     print("Sync complete; device reset.")
                     retry_after = 0
+                    if once:
+                        return
                 except RuntimeError as error:
                     print(f"Deployment failed: {error}")
                     retry_after = time.monotonic() + RETRY_INTERVAL
@@ -148,7 +154,14 @@ def watch():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Watch and sync a connected Badger")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="exit after the first successful sync",
+    )
+    args = parser.parse_args()
     try:
-        watch()
+        watch(once=args.once)
     except KeyboardInterrupt:
         print("\nStopped watching.")
