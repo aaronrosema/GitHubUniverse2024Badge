@@ -37,12 +37,15 @@ state = {
 
 badger_os.state_load("launcher", state)
 
-examples = [x[:-3] for x in os.listdir(APP_DIR) if x.endswith(".py")]
+examples = sorted(
+    x[:-3] for x in os.listdir(APP_DIR) if x.endswith(".py") and not x.startswith("_")
+)
 
 # Approximate center lines for buttons A, B and C
 centers = (41, 147, 253)
 
-MAX_PAGE = math.ceil(len(examples) / 3)
+MAX_PAGE = max(1, math.ceil(len(examples) / 3))
+state["page"] %= MAX_PAGE
 
 WIDTH = 296
 

@@ -4,9 +4,7 @@ At GitHub events, the Badger 2040 is pre-loaded with data to personalise it to t
 ## Badger Modifications
 On top of the stock Badger OS image, the following changes are made:
 - A GitHub event branded [badge.py](preload/examples/badge.py) that displays the attendee name with a background image and corresponding badge.txt file containing the personalised data
-- The [Book of Mona](preload/books/mona.txt), and updated [ebook.py](preload/examples/ebook.py) that points to it
-- Some [pre-loaded QR Codes](preload/qrcodes/)
-- Some [pre-loaded images](preload/images/)
+- Separate launcher apps for Mac system stats, GitHub Status, and weather, populated by [pc_sender.py](pc_sender.py). Run `python3 pc_sender.py` on the Mac and leave it running while switching dashboard apps. The sender retries the USB serial connection if the badge resets or is disconnected. Press A+C to return to the launcher; A alone inverts the badge colors.
 
 ## Running on a laptop
 Install the latest version of python 3 via homebrew
@@ -25,6 +23,15 @@ Or optionally run the manual flashing script
 ```
 python3 scripts/bodge.py
 ```
+
+### Developing on a Badger 2040
+
+Install the requirements if you have not already, then run this from the repository root:
+```
+python3 scripts/watch_badger.py
+```
+
+Keep the watcher running while you develop. It deploys the contents of `preload/` when a Badger is connected, copies changed or new files, and removes files deleted from `preload/` during that session. Each deployment resets the device so it can load the updated files. Press `Ctrl-C` to stop the watcher.
 
 ## Badger Bodger Device
 The Badger Bodger itself is a Raspberry Pi with a small display and a 2D barcode scanner attached.

@@ -171,30 +171,12 @@ while True:
     # powered *through* HALT, so latch the power back on.
     display.keepalive()
 
-    # Toggle inverted colors when Button A is pressed
-    if display.pressed(badger2040.BUTTON_A):
+    if display.pressed(badger2040.BUTTON_A) and display.pressed(badger2040.BUTTON_C):
+        import machine
+        machine.reset()
+    elif display.pressed(badger2040.BUTTON_A):
         inverted = not inverted
         draw_badge()
-
-    # Launch dashboard.py when Button B is pressed
-    if display.pressed(badger2040.BUTTON_B):
-        try:
-            with open("/dashboard.py") as f:
-                code = f.read()
-            exec(code, {"__name__": "__main__"})
-        except Exception as e:
-            import sys
-            with open("/error.txt", "w") as err_file:
-                sys.print_exception(e, err_file)
-            
-            # Also draw the short error message right on the screen
-            display.set_pen(15)
-            display.clear()
-            display.set_pen(0)
-            display.set_font("bitmap8")
-            display.text("Dashboard Error:", 10, 10, 276, 2)
-            display.text(str(e), 10, 35, 276, 2)
-            display.update()
 
     # If on battery, halt the Badger to save power, it will wake up if any of the front buttons are pressed
     display.halt()

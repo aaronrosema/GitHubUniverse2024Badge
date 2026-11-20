@@ -7,6 +7,7 @@ import serial
 
 PORT = "/dev/cu.usbmodem1101"
 BAUD = 115200
+RECONNECT_DELAY = 2
 GH_STATUS_URL = "https://githubstatus.com"
 
 # Coordinates for weather (currently set to Detroit/SE Michigan)
@@ -96,8 +97,38 @@ def get_weather():
     except Exception as e:
         return ["Weather error", str(e)[:28], "Retrying soon..."]
 
-ser = serial.Serial(PORT, BAUD, timeout=1)
-time.sleep(2)
+
+def connect_serial():
+    while True:
+        try:
+            connection = serial.Serial(
+                PORT, BAUD, timeout=1, write_timeout=1
+            )
+            time.sleep(2)
+            print(f"Connected to badge on {PORT}")
+            return connection
+        except serial.SerialException as e:
+            print(f"Unable to connect to badge on {PORT}: {e}; retrying")
+            time.sleep(RECONNECT_DELAY)
+
+
+def send_payload(connection, payload):
+    encoded_payload = payload.encode("utf-8")
+    while True:
+        try:
+            connection.write(encoded_payload)
+            return connection
+        except serial.SerialException as e:
+            print(f"Badge connection lost: {e}; reconnecting")
+            try:
+                connection.close()
+            except serial.SerialException as close_error:
+                print(f"Error closing serial connection: {close_error}")
+            time.sleep(RECONNECT_DELAY)
+            connection = connect_serial()
+
+
+ser = connect_serial()
 
 while True:
     # Page 1: Mac System Stats
@@ -113,7 +144,7 @@ while True:
     page3 = "|".join(get_weather())
 
     payload = f"{page1}||{page2}||{page3}\n"
-    ser.write(payload.encode("utf-8"))
+    ser = send_payload(ser, payload)
     print("Sent:", payload.strip())
 
     time.sleep(30)
