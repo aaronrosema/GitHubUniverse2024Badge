@@ -4,7 +4,7 @@ At GitHub events, the Badger 2040 is pre-loaded with data to personalise it to t
 ## Badger Modifications
 On top of the stock Badger OS image, the following changes are made:
 - A GitHub event branded [badge.py](preload/examples/badge.py) that displays the attendee name with a background image and corresponding badge.txt file containing the personalised data
-- Separate launcher apps for Mac system stats, GitHub Status, and weather, populated by [pc_sender.py](pc_sender.py). Run `python3 pc_sender.py` on the Mac and leave it running while switching dashboard apps. The sender retries the USB serial connection if the badge resets or is disconnected. Press A+C to return to the launcher; A alone inverts the badge colors.
+- Separate launcher apps for Mac system stats, GitHub Status, weather, and Apple Music, populated by [pc_sender.py](pc_sender.py) and [media_sender.py](scripts/media_sender.py). Run `python3 pc_sender.py` for the dashboards or `python3 scripts/media_sender.py` for Apple Music, then select the matching app from the launcher. The media sender reconnects if the badge resets, displays the current track, maps A/B/C to previous/play-pause/next, and maps Up/Down to volume. Press A+C to return to the launcher; A alone inverts the dashboard colors.
 
 ## Running on a laptop
 Install the latest version of python 3 via homebrew

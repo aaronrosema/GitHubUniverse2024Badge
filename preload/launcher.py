@@ -84,6 +84,49 @@ def draw_disk_usage(x):
     display.text("{:.2f}%".format(f_used), x + 91, 4, WIDTH, 1.0)
 
 
+def wrap_label(label, max_width):
+    words = label.split()
+    if display.measure_text(label, FONT_SIZE) <= max_width:
+        return [label], FONT_SIZE
+
+    for text_size in (FONT_SIZE, 1.5, 1.0):
+        best_lines = None
+        best_difference = None
+        for split_index in range(1, len(words)):
+            lines = (
+                " ".join(words[:split_index]),
+                " ".join(words[split_index:]),
+            )
+            widths = [
+                display.measure_text(line, text_size)
+                for line in lines
+            ]
+            if max(widths) <= max_width:
+                difference = abs(widths[0] - widths[1])
+                if best_difference is None or difference < best_difference:
+                    best_lines = lines
+                    best_difference = difference
+        if best_lines:
+            return best_lines, text_size
+
+        if len(words) == 1:
+            for split_index in range(1, len(label)):
+                lines = (label[:split_index], label[split_index:])
+                widths = [
+                    display.measure_text(line, text_size)
+                    for line in lines
+                ]
+                if max(widths) <= max_width:
+                    difference = abs(widths[0] - widths[1])
+                    if best_difference is None or difference < best_difference:
+                        best_lines = lines
+                        best_difference = difference
+            if best_lines:
+                return best_lines, text_size
+
+    return [label], 1.0
+
+
 def render():
     display.set_pen(15)
     display.clear()
@@ -105,8 +148,31 @@ def render():
             except (OSError, RuntimeError):
                 continue
         display.set_pen(0)
-        w = display.measure_text(label, FONT_SIZE)
-        display.text(label, int(x - (w / 2)), 16 + 80, WIDTH, FONT_SIZE)
+        left_edge = 0 if i == 0 else (centers[i - 1] + x) // 2
+        right_edge = (
+            WIDTH if i == 2 else (x + centers[i + 1]) // 2
+        )
+        max_width = min(
+            WIDTH // 3,
+            2 * min(x - left_edge, right_edge - x),
+        )
+        lines, text_size = wrap_label(label, max_width)
+        if len(lines) == 1:
+            label_y = 16 + 80
+        else:
+            line_height = int(8 * text_size) + 2
+            text_height = line_height * len(lines) - 2
+            label_y = 82 + (46 - text_height) // 2
+
+        for line_index, line in enumerate(lines):
+            w = display.measure_text(line, text_size)
+            display.text(
+                line,
+                int(x - (w / 2)),
+                label_y + line_index * (int(8 * text_size) + 2),
+                max_width,
+                text_size,
+            )
 
     for i in range(MAX_PAGE):
         x = 286
