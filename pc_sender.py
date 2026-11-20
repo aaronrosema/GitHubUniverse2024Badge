@@ -93,9 +93,10 @@ def get_weather():
             f"Temp: {temp}F (Feels {feels}F)",
             f"Cond: {cond}",
             f"Wind: {wind} mph",
+            str(code),
         ]
     except Exception as e:
-        return ["Weather error", str(e)[:28], "Retrying soon..."]
+        return ["Weather error", str(e)[:28], "Retrying soon...", "-1"]
 
 
 def connect_serial():
